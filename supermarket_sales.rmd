@@ -1,0 +1,759 @@
+---
+title: "Midterm 2 - Data Visualization"
+author: 
+  - "Nguyễn Lương Liệu"   
+  - "Nguyễn Khánh Ly"   
+  - "Vũ Thị Ngọc"   
+  - "Đoàn Thị Thanh Thư"    
+  - "Đinh Thị Quỳnh Trang"    
+
+date: "Tháng 5, 2022"
+output:
+  rmdformats::readthedown:
+    self_contained: yes
+  
+header-includes:
+- \usepackage{tikz}
+- \usepackage{pgfplots}
+- \usetikzlibrary{arrows,automata,positioning}
+- \usepackage[utf8]{inputenc}
+- \usepackage[utf8]{vietnam}
+- \usepackage{etoolbox}
+- \usepackage{xcolor}
+- \makeatletter
+- \preto{\@verbatim}{\topsep=0pt \partopsep=-0pt}
+- \makeatother
+- \DeclareMathOperator*{\argmax}{arg\,max}
+- \newcommand\tstrut{\rule{0pt}{3ex}}
+- \newcommand\bstrut{\rule[-2.5ex]{0pt}{0pt}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(forcats)
+library(ggpubr)
+library(grid)
+library(gridExtra)
+library(DT)
+library(plotly)
+library(lubridate)
+library(validate)
+
+setwd ("E:/Data")
+data <- read_csv("supermarket_sales - Sheet1.csv")
+
+names(data) = c(
+  "Invoice_ID",
+  "Branch",
+  "City",
+  "Customer_type",
+  "Gender",
+  "Product_line",
+  "Unit_price",
+  "Quantity",
+  "Tax_5%",
+  "Total",
+  "Date",
+  "Time",
+  "Payment",
+  "cogs",
+  "gross_margin_percentage",
+  "gross_income",
+  "Rating"
+)
+attach(data)
+```
+
+------------------------------------------------------------------------
+
+# 1. Lời mở đầu
+
+<div align="justify">
+
+Trực quan hóa dữ liệu là công cụ biểu diễn đồ họa của thông tin giúp hiểu được hàng nghìn tỷ dòng dữ liệu được tạo ra mỗi ngày (Chen, Härdle, & Uwin, 2007). Bằng cách sử dụng các yếu tố trực quan như biểu đồ, đồ thị và bản đồ, trực quan hóa rất hữu ích cho việc làm sạch dữ liệu, khám phá cấu trúc dữ liệu, phát hiện các giá trị ngoại lai và các nhóm bất thường, xác định xu hướng và cụm, phát hiện các mẫu cục bộ, đánh giá đầu ra mô hình hóa và trình bày kết quả (Aparicio & Costa, 2015). Điều này là cần thiết cho việc phân tích dữ liệu khám phá và khai thác dữ liệu để kiểm tra chất lượng và giúp các nhà phân tích làm quen với cấu trúc và đặc điểm của dữ liệu trước khi thực hiện các bước tiếp theo và đưa ra quyết định tốt hơn.
+
+Trực quan hóa dữ liệu rất quan trọng đối với hầu hết mọi nghề nghiệp (Tableau Software, 2021). Nó có thể được sử dụng bởi các giáo viên để hiển thị kết quả kiểm tra của sinh viên, bởi các nhà khoa học máy tính khám phá những tiến bộ trong trí tuệ nhân tạo hoặc bởi các giám đốc điều hành muốn chia sẻ thông tin với các bên liên quan. Nó cũng đóng một vai trò quan trọng trong các dự án dữ liệu lớn. Hiện tại, có rất nhiều phần mềm có sẵn hỗ trợ trực quan hóa dữ liệu: phần mềm bảng tính như Excel, các hệ thống dựa trên thủ tục như SAS, các hệ thống dựa trên giao diện người dùng như SPSS hoặc R và nhiều hệ thống khai thác dữ liệu khác. Báo cáo sau đây sẽ sử dụng công cụ Rstudio để trực quan hóa dữ liệu.
+
+Mục tiêu của báo cáo này là tìm kiếm các mối quan hệ thống kê có thể cung cấp những thông tin chi tiết về doanh số bán hàng tại 3 chi nhánh siêu thị khác nhau của một công ty.
+
+Kết cấu của bài báo cáo này gồm 4 phần chính.
+
+-   Tổng quan lý thuyết: giới thiệu về gói *ggplot2* được sử dụng để trực quan hóa dữ liệu trong bài
+
+-   Tổng quan về dữ liệu sử dụng: giới thiệu về tập dữ liệu sẽ sử dụng (nguồn gốc, tên các biến,...) và thực hiện các thao tác tiền xử lý dữ liệu (nếu có)
+
+-   Trực quan hóa dữ liệu
+
+-   Tổng kết
+
+------------------------------------------------------------------------
+
+# 2. Tổng quan lý thuyết
+
+<div align="justify">
+
+Khi làm việc với dữ liệu, để hình dung chúng ngay từ cái nhìn đầu tiên, *ggplot2* là một lựa chọn phổ biến đối với nhiều nhà phân tích (R Graph Gallery, 2018). *ggplot2* là một gói R để tạo ra đồ họa thống kê với ngữ pháp của đồ họa (grammar of graphics). Ưu điểm lớn nhất của *ggplot2* là người dùng không bị giới hạn trong một tập hợp các đồ họa được chỉ định trước. Tuy nhiên, *ggplot2* chỉ hữu ích khi người dùng có một số kiến thức cơ bản trong R. Bên cạnh đó, nó cũng không gợi ý người dùng nên sử dụng đồ họa nào để trả lời các câu hỏi mà họ quan tâm. Và *ggplot2* có thể là một vấn đề khi người dùng muốn tạo ra đồ họa động và tương tác, bởi vì nó không được thiết kế cho điều đó mà chỉ phù hợp với dữ liệu tĩnh.
+
+Ngữ pháp của đồ họa bao gồm 7 đặc điểm chuyên biệt trong đó ba phần đầu tiên là bắt buộc (các thành phần chính):
+
+-   **Data:** dữ liệu mà người dùng muốn trực quan hóa.
+-   **Aesthetic mappings:** mô tả cách các biến trong dữ liệu được ánh xạ đến các thuộc tính thẩm mỹ.
+-   **Geometric objects:** đại diện cho những gì người dùng thực sự nhìn thấy trên biểu đồ: điểm, đường, đa giác,...
+-   **A facetting:** mô tả cách chia nhỏ dữ liệu thành các tập con.
+-   **Statistical transformations:** tóm tắt dữ liệu theo nhiều cách hữu ích.
+-   **A coordinate system:** mô tả cách các tọa độ dữ liệu được ánh xạ tới mặt phẳng của đồ thị.
+-   **A theme:** điều khiển các điểm hiển thị tinh tế hơn, như kích thước phông chữ và màu nền.
+
+Theo tính năng **geometrics**, chúng ta có thể xây dựng hình dạng chính của đồ thị, có thể tham khảo như sau:
+
+-   *geom_point* (tạo ra biểu đồ phân tán).
+-   *geom_smooth* (thêm một đường được làm mịn vào đồ thị để xem mô hình chi phối).
+-   *geom_boxplot* (tạo ra một biểu đồ box and whisker để tóm tắt phân phối).
+-   *geom_histogram/geom_freqpoly* (hiển thị sự phân bố của các biến liên tục).
+-   *geom_bar* (hiển thị phân phối các biến phân loại).
+-   *geom_path/geom_line* (vẽ đường giữa các điểm dữ liệu thay đổi theo thời gian).
+
+Với tính năng **aesthetic mappings**, ngoài việc ánh xạ các biến được chọn đến vị trí x và y, nó cũng có thể sử dụng các tính năng thẩm mỹ khác như màu sắc, hình dạng và kích thước để thêm các biến vào một biểu đồ. Các loại thuộc tính thẩm mỹ khác nhau hoạt động tốt hơn với các loại biến khác nhau, ví dụ, màu sắc và hình dạng phù hợp với các biến phân loại trong khi kích thước thì phù hợp cho biến liên tục.
+
+Với tính năng **facetting**, nó sẽ là một giải pháp thay thế để phân biệt các nhóm khác nhau khi có nhiều dữ liệu. Faceting là một kỹ thuật để hiển thị các biến phân loại bổ sung. Nó tạo ra các bảng đồ họa bằng cách chia dữ liệu thành các tập con và hiển thị trên cùng một biểu đồ cho mỗi tập con. Có hai loại facetting: grid và wrapped. Với facetting, không có sự chồng chéo giữa các nhóm. Do đó, nó phù hợp cho nhiều nhóm có sự chồng chéo nhưng với các nhóm có sự khác biệt nhỏ, aesthetics lại khá phù hợp.
+
+------------------------------------------------------------------------
+
+# 3. Tổng quan về dữ liệu
+
+## 3.1. Giới thiệu về dữ liệu sử dụng
+
+<div align="justify">
+
+Tập dữ liệu *"supermarket_sales"* sử dụng trong bài báo cáo được lấy trên trang kaggle.com theo giấy phép bản quyền công cộng (Public copyright license). Tập dữ liệu này do tác giả Aung Pyae thu thập nhằm mục đích phân tích dữ liệu dự đoán. Tập dữ liệu chứa doanh số lịch sử của công ty siêu thị đã ghi nhận tại 3 chi nhánh khác nhau trong 3 tháng (từ tháng 1 đến tháng 3 năm 2019) ở Myanmar.
+
+## 3.2. Các biến trong dữ liệu
+
+Tập dữ liệu *"supermarket_sales"* bao gồm 1000 quan sát (hàng) và 17 biến (cột), lấy từ các thông tin của hóa đơn bán hàng tại các chi nhánh siêu thị. Bảng dưới đây hiển thị tất cả các tên, loại và mô tả của 17 biến.
+
+
+| STT | Tên biến                | Loại       | Mô tả                                                                                        |
+|-------|--------------------|------------|----------------------------------|
+| 1   | Invoice_ID              | Định danh  | Mã hóa đơn bán hàng do máy tính tạo ra                                                       |
+| 2   | Branch                  | Định danh  | Chi nhánh siêu thị (3 chi nhánh có sẵn được xác định bởi A, B và C)                          |
+| 3   | City                    | Định danh  | Vị trí của các siêu thị (3 thành phố)                                                        |
+| 4   | Customer_type           | Định danh  | Loại khách hàng (Member: Khách hàng thành viên/Normal: Khách hàng thông thường)              |
+| 5   | Gender                  | Định danh  | Giới tính của khách hàng (Male/Female)                                                       |
+| 6   | Product_line            | Định danh  | Dòng sản phẩm (6 nhóm sản phẩm)                                                              |
+| 7   | Unit_price              | Định lượng | Giá của mỗi sản phẩm (dollars)                                                               |
+| 8   | Quantity                | Định lượng | Số lượng sản phẩm được mua bởi khách hàng                                                    |
+| 9   | Tax_5%                  | Định lượng | Thuế 5% tính trên sản phẩm khách mua (dollars)                                               |
+| 10  | Total                   | Định lượng | Tổng giá bao gồm cả thuế (dollars)                                                           |
+| 11  | Date                    | Định danh  | Ngày mua hàng (từ tháng 1 đến tháng 3 năm 2019)                                              |
+| 12  | Time                    | Định danh  | Thời gian mua (10 giờ sáng đến 9 giờ tối)                                                    |
+| 13  | Payment                 | Định danh  | Phương thức thanh toán được khách hàng sử dụng (3 phương thức)                               |
+| 14  | cogs                    | Định lượng | Giá vốn hàng bán (dollars)                                                                   |
+| 15  | gross_margin_percentage | Định lượng | Phần trăm tỷ suất lợi nhuận gộp                                                              |
+| 16  | gross_income            | Định lượng | Tổng thu nhập (dollars)                                                                      |
+| 17  | Rating                  | Định lượng | Đánh giá của khách hàng về trải nghiệm mua sắm tổng thể của họ (trên thang điểm từ 1 đến 10) |
+
+: Các biến trong tập dữ liệu và mô tả
+
+## 3.3. Thống kê mô tả
+
+<div align="justify">
+
+Bảng sau cung cấp một số thống kê mô tả của 4 biến định lượng: **Total**, **Rating**, **Quantity** và **Unitprice**
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+table1 <- data.frame(
+  Numeric_variables = c("Total", "Rating", "Quantity", "Unit_price"),
+  Min = c(
+    min(Total, na.rm = TRUE),
+    min(Rating, na.rm = TRUE),
+    min(Quantity, na.rm = TRUE),
+    min(Unit_price, na.rm = TRUE)
+  ),
+  Mean = c(
+    mean(Total, na.rm = TRUE),
+    mean(Rating, na.rm = TRUE),
+    mean(Quantity, na.rm = TRUE),
+    mean(Unit_price, na.rm = TRUE)
+  ),
+  Max = c(
+    max(Total, na.rm = TRUE),
+    max(Rating, na.rm = TRUE),
+    max(Quantity, na.rm = TRUE),
+    max(Unit_price, na.rm = TRUE)
+  ),
+  Median = c(
+    median(Total, na.rm = TRUE),
+    median(Rating, na.rm = TRUE),
+    median(Quantity, na.rm = TRUE),
+    median(Unit_price, na.rm = TRUE)
+  ),
+  Sd = c(
+    sd(Total, na.rm = TRUE),
+    sd(Rating, na.rm = TRUE),
+    sd(Quantity, na.rm = TRUE),
+    sd(Unit_price, na.rm = TRUE)
+  ),
+  NAs = c(sum(is.na(Total)), sum(is.na(Rating)), sum(is.na(Quantity)), sum(is.na(Unit_price)))
+)
+
+kbl(table1, caption = "Descriptive statistics of continuous variables") %>%
+  row_spec(
+    row = 0,
+    bold = TRUE,
+    color = "black",
+    background = "#F9EBEA"
+  ) %>%
+  kable_styling(
+    bootstrap_options = "striped",
+    full_width = F,
+    position = "center"
+  )
+```
+
+<div align="justify">
+
+Bảng trên cung cấp một số cái nhìn đầu tiên quan trọng về dữ liệu. Có thể thấy, dữ liệu đầy đủ, không có giá trị NA.
+
+Bảng dưới đây cho thấy thống kê mô tả của các biến định tính phân loại: **Payment**, **Product_line** và **Customer_type** từ tập dữ liệu.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+dat1 <- data %>% group_by(Payment) %>% 
+  summarise(counts = n()) %>%
+  mutate(Prob = round(counts * 100 / sum(counts), 1))
+
+datatable(
+  dat1,
+  rownames = FALSE,
+  colnames = c("Payment", "counts", "prob"),
+  caption = "Frequency Payment"
+)
+
+
+dat2 <-
+  data %>% group_by(Product_line) %>% 
+  summarise(counts = n()) %>%
+  mutate(prob = round(counts * 100 / sum(counts), 1))
+
+datatable(
+  dat2,
+  rownames = FALSE,
+  colnames = c("Product_line", "counts", "prob"),
+  caption = "Frequency Product_line "
+)
+
+
+dat3 <-
+  data %>% group_by(Customer_type) %>% 
+  summarise(counts = n()) %>%
+  mutate(prob = round(counts * 100 / sum(counts), 1))
+
+datatable(
+  dat3,
+  rownames = FALSE,
+  colnames = c("Customer_type", "counts", "prob"),
+  caption = "Frequency Customer_type "
+)
+```
+
+## 3.4. Làm sạch dữ liệu
+
+<div align="justify">
+
+Tập dữ liệu thu thập được không có giá trị bị thiếu (missing value). Với các biến định lượng, để phục vụ tốt cho việc trực quan hóa dữ liệu, chúng ta có thể làm sạch dữ liệu bằng các xem xét và loại bỏ các giá trị outliers.
+
+```{r, warning = FALSE, message = FALSE}
+box1 <-
+  ggplot(data, aes(Total)) + geom_boxplot() + xlab("Total") + coord_flip() + theme_bw() +
+  labs(title = "Total")
+box2 <-
+  ggplot(data, aes(Unit_price)) + geom_boxplot() + xlab("Unitprice") + coord_flip() + theme_bw() +
+  labs(title = "Unitprice")
+box3 <-
+  ggplot(data, aes(Rating)) + geom_boxplot() + xlab("Rating") + coord_flip() + theme_bw() +
+  labs(title = "Rating")
+box4 <-
+  ggplot(data, aes(Quantity)) + geom_boxplot() + xlab("Quantity") + coord_flip() + theme_bw() +
+  labs(title = "Quantity")
+
+grid.arrange(box1, box2, box3, box4, ncol = 4)
+```
+
+```{r, warning = FALSE, message = FALSE}
+minTotal = quantile(data$Total, probs = 0.3) - 1.5 * IQR(data$Total)
+maxTotal = quantile(data$Total, probs = 0.7) + 1.5 * IQR(data$Total)
+
+minprice = quantile(data$Unit_price, probs = 0.3) - 1.5 * IQR(data$Unit_price)
+maxprice = quantile(data$Unit_price, probs = 0.7) + 1.5 * IQR(data$Unit_price)
+
+minrating = quantile(data$Rating, probs = 0.3) - 1.5 * IQR(data$Rating)
+maxrating = quantile(data$Rating, probs = 0.7) + 1.5 * IQR(data$Rating)
+
+checkdata <- check_that(data, Total < maxTotal)
+
+summary(checkdata)
+```
+
+```{r, warning = FALSE, message = FALSE}
+barplot(checkdata[1:7], main = "Errors in Total")
+```
+
+<div align="justify">
+
+Bằng việc vẽ biểu đồ boxplot và sử dụng các điều kiện để lọc ra giá trị ngoại lai, kết quả cho thấy: trong 4 biến định lượng trên chỉ có biến **Total** có 15 giá trị khác lệch nhiều so với trung bình trong 1000 giá trị trong mẫu. Vì vậy, để việc phân tích và báo cáo chính xác hơn, ta cần sử dụng câu lệnh thay các giá trị ngoại lai này như sau:
+
+```{r, warning = FALSE, message = FALSE}
+data$Total[data$Total > maxTotal] = mean(data$Total)
+```
+
+------------------------------------------------------------------------
+
+# 4. Trực quan hóa dữ liệu
+
+## 4.1. Phân tích từng biến riêng lẻ
+
+### 4.1.1. Biến Payment
+
+<div align="justify">
+
+Có 3 phương thức thanh toán có thể lựa chọn khi mua hàng ở siêu thị, lần lượt là *Cash* (tiền mặt), *Credit card* (thẻ tín dụng) và *E-wallet* (ví điện tử). Biểu đồ sau cho thấy tỷ trọng của từng phương thức thanh toán trong 1000 mã đơn hàng được khảo sát.
+
+```{r, warning = FALSE, message = FALSE}
+dat <- data %>% group_by(Payment) %>% summarise(counts = n()) %>%
+  arrange(desc(Payment)) %>%
+  mutate(prop = round(counts * 100 / sum(counts), 1),
+         lab.ypos = cumsum(prop) - 0.5 * prop)
+
+ggplot(dat, aes(x = "", y = prop, fill = Payment)) +
+  geom_bar(width = 1,
+           stat = "identity",
+           color = "white") +
+  geom_text(aes(y = lab.ypos, label = prop), color = "black") +
+  coord_polar("y", start = 0) +
+  ggpubr::fill_palette(c("#FFDEAD", "#DEB887", "#CD853F")) +
+  theme_void() +
+  labs(title = "Pie chart of Payment", subtitle = "Unit: Percentage (%)")
+```
+
+<div align="justify">
+
+Nhìn chung, tỷ trọng của 3 phương thức này là khá tương đương nhau. Trong đó, thanh toán bằng thẻ tín dụng chiếm tỷ lệ cao nhất với 34,5%. Tiếp đến là thanh toán bằng tiền mặt, chiếm 34,4% và cuối cùng là phương thức ví điện tử với 31,1%.
+
+Điều này khá hợp lí với thực tế, khi mà Credit card đang ngày càng được sử dụng rộng rãi bởi những tiện ích mà nó mang lại: gọn nhẹ, giảm rủi ro khi mang tiền mặt, chi tiêu ngắn hạn được miễn lãi, hưởng nhiều ưu đãi,...
+
+Ví điện tử cũng đang là xu hướng thanh toán mới, với thao tác khá đơn giản, kết nối được nhiều tài khoản ngân hàng, có thể mua sắm online,... Tuy nhiên, nó cũng gây khó khăn cho một số người ở những nơi chưa được tiếp cận nhiều với công nghệ, người già,... hay khi điện thoại gặp phải vấn đề như hết pin, sập nguồn.
+
+Mặt khác, có nhiều người vẫn quen với việc thanh toán truyền thống là tiền mặt nên tỷ trọng của cách thức này vẫn còn khá cao.
+
+### 4.1.2. Biến Total
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data, aes(x = Total)) + geom_histogram(aes(y = ..density..),
+                                             colour = "black",
+                                             fill = "#D49280",
+                                             bins = 30) +
+  geom_density(col = "black") +
+  theme_bw() +
+  labs(title = "Density histogram of total price")
+```
+
+<div align="justify">
+
+Biểu đồ trên minh họa mật độ của biến **Total**. Có thể thấy tổng giá sản phẩm và dịch vụ (bao gồm cả thuế) nằm trong khoảng từ 0 đến hơn 1000. Bên cạnh đó, biểu đồ này lệch phải, phẩn lớn dữ liệu dữ liệu tập trung phía bên trái biểu đồ, chứng tỏ tổng giá sản phẩm và dịch vụ không quá cao.
+
+### 4.1.3. Biến Customer_type
+
+<div align="justify">
+
+Để mô tả về biến **Customer_type**, ta có thể dùng biểu đồ thanh.
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data, aes(x = "", fill = Customer_type)) +
+  geom_bar(width = 0.75, stat = 'count') +
+  stat_count(geom = "text", aes(label = stat(count)), vjust = 4) +
+  scale_fill_manual(values = c("#8B4513", "#CD853F")) +
+  theme_bw() +
+  labs(fill = "Member/Normal", title = "Number of Member/Normal customer")
+```
+
+<div align="justify">
+
+Qua biểu đồ trên, ta nhận thấy số lượng khách hàng mua sản phẩm tại siêu thị với tư cách là khách hàng thành viên và với tư cách là khách hàng bình thuờng không có sự chênh lệch lớn.
+
+-   Số lượng khách hàng thành viên là 501 nguời trên tổng 1000 người (chiếm 50.1% tổng số khách hàng mua sản phẩm)
+-   Số lượng khách hàng bình thường chỉ kém một luợng không đáng kể với 499 nguười(chiếm 49.9%).
+
+Nguyên nhân của sự chênh lệch có lẽ là do khách hành thành viên của siêu thị sẽ được nhận một ưu đãi nào đó khi mua các sản phẩm tại siêu thị.
+
+### 4.1.4. Biến Product_line
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(mutate(data, Productline = fct_infreq(data$Product_line))) +
+  geom_bar(aes(x = Productline), fill = "#F4A460", width = 0.4) +
+  coord_flip() +
+  theme_bw() +
+  labs(title = "Observations by Productline")
+```
+
+<div align="justify">
+
+Biểu đồ trên cho biết số lượng các nhóm mặt hàng trong 1000 mẫu hóa đơn được sắp xếp theo thứ tự tăng dần. Nhìn chung, 6 nhóm sản phẩm có lượng xuất hiện (tiêu thụ) gần như nhau trong 3 tháng đầu năm 2019 ở 3 thành phố của Myanmar. Trong đó, số lượng nhóm sản phẩm được mua sắm nhiều nhất là *Fashion accessories* (khoảng 200) và nhóm sản phẩm có lượng tiêu thụ ít nhất là *Health and beauty* (khoảng 150).
+
+Myanmar là vùng đất của lễ hội, những tháng đầu năm có khá nhiều sự kiện liên quan đến trang phục, thời trang và đền chùa, nên có thể nhu cầu về nhóm sản phầm *Fashion accessories* tăng cao hơn trong khoảng thời gian này.
+
+Tuy nhiên, biểu đồ trên chỉ là thống kê số nhóm mặt hàng được lựa chọn bởi các khách hàng khác nhau, để biết chính xác số lượng mua của mỗi khách hàng trong mỗi nhóm sản phẩm, ta cần trực quan hóa theo biến *Quantity* (số lượng mua hàng ở mỗi nhóm mặt hàng trên)
+
+### 4.1.5. Biến Rating
+
+<div align="justify">
+
+Biểu đồ histogram về sự hài lòng của khách hàng (theo thang điểm 10) đánh giá về sản phẩm và dịch vụ cung cấp bởi 6 nhóm mặt hàng trên trong khoảng thời gian 3 tháng đầu năm 2019.
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data, aes(Rating)) + geom_histogram(binwidth = 0.2,
+                                           fill = "#CD853F",
+                                           color = "#F4A460")
+
+```
+
+<div align="justify">
+
+Nhìn chung, mức điểm trung bình mà khách hàng đánh giá là 7 điểm, mức điểm cao nhất là 10 và thấp nhất là 4.
+
+Việc thống kê số lượng đánh giá ở mỗi thang điểm 10 sẽ giúp các doanh nghiệp cung cấp sản phẩm, nhà nghiên cứu thị trường có thể từ đó tìm sâu hơn nguyên nhân tại sao khách hàng không hài lòng với dịch vụ và sản phẩm của mình để tìm ra chiến lược phát triển phù hợp cũng như tiếp tục phát huy những chiến lược hiệu quả cũ khiến cho khách hàng có sự hài lòng như vậy.
+
+## 4.2. Phân tích đồng thời các biến
+
+### 4.2.1. Hai biến nhân tố
+
+**(Product_line và City)**
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data, aes(x = factor(data$City), fill = factor(data$Product_line))) +
+  geom_bar(position = "fill", width = 0.93) +
+  scale_fill_manual(values = c(
+    "#8B4513",
+    "#D2691E",
+    "#F4A460",
+    "#CD853F",
+    "#FFE4B5",
+    "#D2B48C"
+  )) +
+  theme_bw() +
+  ylab(NULL) + xlab("city") +
+  labs(fill = "Product line:", title = "Percentage")
+```
+
+<div align="justify">
+
+Biểu đồ trên cho biết nhóm mặt hàng bán được phân chia theo các thành phố khác nhau,trong đó:
+
+-   So sánh giữa các thành phố (xét theo chiều ngang)
+
+    -   Nhóm mặt hàng *Sports and travel* ở thành phố Naypyitaw được tiêu thụ ít nhất.
+
+    -   Nhóm mặt hàng *Home and lifestyle* ở thành phố Yangon có nhiều đơn hàng nhất.
+
+    -   Nhóm mặt hàng *Food and beverages* ở thành phố Naypyitaw được bán nhiều nhất.
+
+    -   Cả 3 thành phố trên đều có mặt hàng *Electronic accessories* được tiêu thụ gần như nhau.
+
+-   Trong cùng thành phố (xét theo chiều dọc)
+
+    -   Tại Mandalay, nhóm mặt hàng *Sports and travel* và *Fashion accessories* có lượng tiêu thụ nhiều nhất và ít nhất là *Food and beverages.*
+
+    -   Tại Yangon, nhóm mặt hàng *Home and lifestyle* có lượng tiêu thụ nhiều nhất và ít nhất là *Health and beauty.*
+
+    -   Ở Naypyitaw, nhóm mặt hàng *Food and beverages* và *Fashion accessories* có lượng tiêu thụ nhiều nhất và ít nhất là *Home and lifestyle.*
+
+Với sự phân tích cho 1000 mẫu quan sát trên, phương pháp so sánh theo 2 chiều giúp các doanh nghiệp có thể biết được xu hướng mua hàng ở 3 thành phố, so sánh giữa các thành phố để biết được ưu thế của mỗi thành phố và so sánh trong cùng thành phố để biết được ưu thế của mỗi nhóm mặt hàng. Chẳng hạn như, ở thành phố Yangon có ưu thế về *Home and lifestyle* thì có thể tìm thêm những chiến lược kinh doanh để kích cầu hơn nữa...
+
+**(Payment và City)**
+
+Để biết cơ cấu 3 phương thức thanh toán ở từng thành phố, ta cần trực quan hóa *Payment* theo biến *City*
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data, aes(x = City, fill = Payment)) +
+  geom_bar(position = "fill") +
+  theme(legend.position = "bottom") +
+  scale_fill_manual(values = c("#FFDEAD", "#DEB887", "#CD853F")) +
+  theme_bw() +
+  ylab(NULL) + xlab("City") +
+  labs(fill = "Type of Payment:", title = "Percentage of Payment based on City")
+```
+
+<div align="justify">
+
+So sánh giữa các thành phố (xét theo chiều ngang):
+
+-   Nhìn vào cả 3 cột, ta thấy tỷ trọng của *Ewallet* ở Yangon cao hơn so với 2 thành phố kia. Do đó, có thể nói, dựa trên mẫu được khảo sát, ở Yangon có xu hướng sử dụng phương thức *Ewallet* khi mua hàng nhiều hơn.
+
+-   Thành phố Naypyitaw có xu hướng sử dụng phương thức *Cash* khi mua hàng nhiều hơn.
+
+```{r, warning = FALSE, message = FALSE}
+data %>% group_by(Payment, City) %>% count() %>% 
+  ggplot(aes(Payment, n)) + geom_col() +
+  facet_wrap( ~ City, scales = "free") +
+  geom_text(aes(label = n),
+            color = "white",
+            vjust = 1.2,
+            size = 3) + 
+  labs(x = NULL, y = NULL, title = "Payment based on City")
+```
+
+<div align="justify">
+
+Trong cùng thành phố:
+
+Cụ thể, đối với thành phố Mandalay, E-wallet là phương thức được sử dụng nhiều nhất khi thanh toán hàng hoá ở siêu thị với 113 lượt. Tiếp đến là Cash (110 lượt) và cuối cùng là Credit card (109 lượt). Còn ở Naypyitaw, tiền mặt lại được sử dụng nhiều hơn tương đối so với các phương thức còn lại. Ở Yangon, lượt thanh toán dùng ví điện tử là cao nhất với 126 lượt.
+
+Điều này phản ánh khá đúng thực tế. Yangon vốn là thủ đô cũ, dân cư đông đúc, là thành phố lớn nhất Myanmar, nên việc tiếp cận và sử dụng các phương thức thanh toán hiện đại sẽ dễ dàng hơn. Mandalay cũng là thành phố lớn thứ 2 của nước này. Còn Naypyitaw tuy là thủ đô của Myanmar từ 2005, nhưng vốn chỉ là nơi dân cư không đông đúc, kém phát triển, nên phương thức thanh toán truyền thống tiền mặt được sử dụng nhiều hơn. Bên cạnh đó, ví điện tử ngày càng được ưa chuộng bởi những tiện ích mà nó mang lại, do đó, phương thức này chiếm tỷ lệ cao là điều dễ hiểu.
+
+Các siêu thị ở từng khu vực có thể dự vào phân tích trên để đưa ra những chính sách trong tương lai: ưu tiên tập trung phát triển hình thức thanh toán đang là thế mạnh ở đó; phân loại khách hàng: có tài khoản ngân hàng/ không có tài khoản ngân hàng, người trẻ/ người già...
+
+Hình thức thanh toán điện tử có tiềm năng phát triển lớn ở cả 3 thành phố. Nó cũng làm cho các giao dịch thanh toán hàng hóa, dịch vụ ở trong và ngoài nước trở nên nhanh hơn, tiện lợi hơn và an toàn hơn. Do đó, khuyến nghị nên có chính sách khuyến khích khách hàng tham gia thanh toán điện tử như có thêm ưu đãi, giảm giá... khi thanh toán bằng hình thức này... Ngoài ra, cần tập trung đầu tư vào hạ tầng thanh toán điện tử, liên kết thêm nhiều ngân hàng, ví điện tử;...
+
+**(Payment và Gender)**
+
+Liệu có sự khác nhau khi giữa khách hàng nam và khách hàng nữ trong sử dụng phương thức thanh toán khi mua hàng, ta cùng xem biểu đồ sau đây.
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data, aes(x = Gender, fill = Payment)) +
+  geom_bar(position = "fill") +
+  theme(legend.position = "bottom") +
+  scale_fill_manual(values = c("#FFDEAD", "#DEB887", "#CD853F")) +
+  theme_bw() +
+  ylab(NULL) + xlab("Gender") +
+  labs(fill = "Type of Payment:", title = "Percentage of Payment based on Gender")
+```
+
+<div align="justify">
+
+Xét theo chiều ngang:
+
+-   Có thể thấy, nam giới có xu hướng sử dụng tiền mặt và *Credit Card* khi mua hàng nhiều hơn so với nữ (dễ thấy tỷ trọng dùng Cash trong 3 phương thức ở nam giới cao hơn tỷ trọng dùng Cash ở nữ giới).
+
+-   Nữ giới có xu hướng sử dụng Ewallet khi mua hàng nhiều hơn so với nam
+
+Xét theo chiều dọc:
+
+-   Ở nữ giới, *Cash* là phương thức được sử dụng nhiều nhất. Lượt sử dụng *Credit card* và *Ewallet* để thanh toán là khá tương đương nhau.
+
+-   Còn ở nam giới, *Ewallet* lại được sử dụng nhiều nhất, cao hơn hẳn so với lượt sử dụng phương thức thanh toán là *Cash* và *Credit card*.
+
+### 4.2.2. Một biến định lượng và một biến nhân tố
+
+<div align="justify">
+
+**(Quantity và Gender)**
+
+Liệu có sự khách biệt về số lượng mua hàng ở những khách hàng nam và khách hàng nữ ?
+
+```{r, warning = FALSE, message = FALSE}
+colors <-
+  c("#8B4513",
+    "#D49280")
+
+plot_ly(data,
+        x = ~ Quantity,
+        color = ~ Gender,
+        type = "box",
+        colors = colors)
+```
+
+<div align="justify">
+
+Số liệu khảo sát trong đó có 501 là nam và 499 là khách hàng nữ.
+
+Nhìn chung, Với 1000 mẫu quan sat thu thập được cho thấy: trung bình lượng mua hàng ở khách hàng nữ nhiều hơn hẳn so với nam. Điều đó được thể hiện ở khách hàng nữ có lượng mua trung bình là 6, còn nam thì là 5.
+
+Điều này khá hợp lí khi phụ nữ thường có xu hướng mua nhiều hơn những món đồ cần thiết và thường có nhu cầu về các sản phầm trên nhiều hơn nam (đặc biệt trong 3 tháng đầu năm).
+
+**(Quantity và Customer_type)**
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data, aes(x = Quantity, fill = factor(Customer_type))) +
+  geom_bar(position = "fill", width = 0.7) +
+  scale_fill_manual(values = c(
+    "#8B4513",
+    "#D2691E",
+    "#F4A460",
+    "#CD853F",
+    "#FFE4B5",
+    "#D2B48C"
+  )) +
+  ylab(NULL) + xlab("Quantity") +
+  labs(fill = "Customer_type:", title = "Percentage")
+```
+
+<div align="justify">
+
+Số lượng mua hàng ngoài khác nhau về giới tính, còn khách nhau về loại khách hàng. Dựa vào biểu đồ, có thể thấy rằng: với số lượng mua hàng càng lớn thì hâu như khách hàng thuộc nhóm này là *Member* (đã là thành viên) chiếm tới hơn 50%.
+
+Với thống kê ở 3 thành phố trên: lượng khách hàng đã là thành viên có tỷ lệ mua hàng khá cao (thể hiện ở những giá trị càng lớn: với cùng lượng mua 9-10 sản phẩm thì lượng khách hàng *Member* nhiều hơn hẳn so với khách hàng *Nomal*), điều này có thể giải thích bởi: các doanh nghiệp có thể đã làm tốt việc chăm sóc khách hàng nên tỷ lệ khách hàng *Member* quay trở lại mua hàng khá nhiều, hoặc cũng có thể do khi mua với số lượng nhiều thì sẽ có ưu đãi, các mã giảm giá cho thẻ thành viên (*Các loại thẻ thành viên giúp khách hàng có thể nhận được các khuyến mãi ưu đãi kèm theo điểm thưởng khi mua hàng nhằm giảm giá khi mua hàng lần sau*).
+
+Theo các chuyên gia nghiên cứu trên thế giới, chi phí để một doanh nghiệp kinh doanh tìm kiếm khách hàng mới tốn gấp nhiều lần hơn việc giữ chân một khách hàng cũ. Vì vậy, đấy có thể là điểm tích cực trong các chiến lược giữ chân khách hàng cũ nhờ phát hành thẻ thành viên, nâng cấp thẻ do mua số lượng lớn, giảm giá ưu đãi các dịp lễ...
+
+**(Total và Date)**
+
+```{r, warning = FALSE, message = FALSE}
+data_removed <- data[, -1]
+data_removed$Date <- as.Date(data$Date, "%m/%d/%y")
+year(data_removed$Date) <- 2019
+sapply(data_removed, function(x)
+  sum(is.na(x)))
+
+total_sales_per_day <-
+  data.frame(xtabs(formula = Total ~ Date, data = data_removed))
+total_sales_per_day$Date <- as.Date(total_sales_per_day$Date)
+
+ggplot(data = total_sales_per_day, mapping = aes(x = Date, y = Freq)) + geom_line() +
+  theme_linedraw() + 
+  ggtitle("Time Series Relationship for the Total Sales per day") + 
+  xlab("Date") + ylab("Total Sales Per Day")
+```
+
+<div align="justify">
+
+Biểu đồ minh họa tổng hàng hóa cũng như dịch vụ bán được trong 3 tháng đầu năm 2019. Nhìn vào biểu đồ thấy rằng,trong tháng 2 và tháng 3 bán được nhiều hàng hóa và dịch vụ hơn trong tháng 1. Bên cạnh đó, doanh số bình quân theo ngày trong 1 tháng có sự biến động, không ổn định, thể hiện sự khác nhau rõ rệt từng ngày. Do đó, mỗi thành phố cần áp dụng và tìm các biện pháp cụ thể để có thể ổn định và duy trì mức hàng hóa bán được.
+
+**(Total và City)**
+
+Biểu đồ minh họa tổng giá bán hàng hóa và dịch vụ (cả thuế) ở 3 thành phố Yangon, Nayoyitaw và Mandalay trong 3 tháng đầu năm 2019.
+
+```{r, message= FALSE, warning = FALSE}
+x_formatted <-
+  as.Date(data$Date, format = "%m/%d/%Y") # Convert character to Date
+month <- format(x_formatted, "%m") # Extract month
+
+p <- ggplot(data,
+            aes(x = Total)) +
+  geom_bar(aes(y = City, fill = month),
+           stat = "identity",
+           position = "dodge") + 
+  scale_fill_manual(values = c("#8B4513", "#D2691E", "#D2B48C")) +
+  scale_color_manual(values = c(0.9, 1))
+p
+```
+
+<div align="justify">
+
+Xét ở từng thành phố:
+
+-   Yangon: Tháng 2 và 3 bán được nhiều hàng hóa nhất, tháng 1 bán được ít hàng hóa nhất
+
+-   Naypyitaw: 3 tháng gần như bán được lượng hàng hóa tương đương nhau
+
+-   Mandalay: Tháng 2 bán được ít hàng hóa nhất, tháng 1 số hàng hóa bán được nhiều nhất
+
+So sánh giữa các thành phố:
+
+-   Tháng 1: Naypyitaw bán được nhiều hàng hóa nhất
+
+-   Tháng 2: Mandalay bán được ít hàng hóa nhất
+
+-   Tháng 3: Mandalay bán được ít hàng hóa nhất
+
+Khuyến nghị: Với những tháng bán được nhiều hàng hóa, các trung tâm thương mại ở 3 thành phố lớn này cần duy trì số lượng khách hàng với những biện pháp đang áp dụng, còn đối với những tháng bán được ít hàng hóa, nên thay đổi chiến lược cũng như tìm ra các biện pháp hiệu quả hơn để dữ chân khách hàng trung thành và tìm thêm những khách hàng mới.
+
+**(Rating và Gender)**
+
+```{r, message= FALSE, warning = FALSE}
+ggplot(data, aes(x = Rating, fill = Gender)) +
+  geom_density(alpha = 0.7) +
+  theme_bw() +
+  scale_fill_manual(values = c("#8B4513", "#D2691E")) +
+  labs(title = "Density of Rating based on Gender")
+```
+
+<div align="justify">
+
+Qua biểu đồ trên, ta thấy biến "Rating" nằm trong khoảng từ 1 đến 10. Nó thể hiện mức độ hài lòng của mỗi khách hàng khi mua sắm một số sản phẩm tại siêu thị: mức 1 thể hiện sự không hài lòng nhất,..., mức 10 thể hiện sự hài lòng tuyệt đối của khách hàng.
+
+Từ biểu đồ, ta thấy số lượng khách hàng nam hài lòng ở mức 6(mức trung bình)là cao nhất và thấp nhất là mức 4; còn đối với sự hài lòng của khách hàng nữ thì mức độ hài lòng chiếm số lượng cao nhất là ở mức 7.5. Bên cạnh đó, số lượng khách hàng nữ có mức độ hài lòng tại mức 9.5 cao hơn so với khách hàng là nam.
+
+Từ phân tích sơ bộ, ta có thể đưa ra kết luận: không có khách hàng nào cảm thấy rất không hài lòng(mức 1,2,3) với sản phẩm tại siêu thị và cũng chỉ có số ít khách hàng đạt mức hài lòng tuyệt đối trong thang đo 10. Vì vậy, các sản phẩm được bán tại siêu thị khá phù hợp với yêu cầu của khách hàng.
+
+Qua đây, chúng ta cũng cần làm khảo sát để xem xét tại sao khách hàng lại có mức độ hài lòng thấp, hay thấp đối với sản phẩm nào để có những chiến lược cụ thể để tăng mức độ hài lòng khách hàng.
+
+**(Rating và Product_line)**
+
+Biểu đồ boxplot thể mức độ hài lòng của khách hàng khi tiêu dùng các nhóm sản phầm trên (đánh giá theo thang 10).
+
+```{r, message= FALSE, warning = FALSE}
+colors <-
+  c("#8B4513",
+    "#BC8F8F",
+    "#D2691E",
+    "#F4A460",
+    "#FFDEAD",
+    "#F5DEB3")
+plot_ly(
+  data,
+  x = data$Rating,
+  color = data$Product_line,
+  type = "box",
+  colors = colors
+)
+```
+
+<div align="justify">
+
+Nhìn chung, điểm đánh giá sự hài lòng của khách hàng phổ biến nhất dao động trong khoảng 5.5-8.5 với điểm trung bình ở khoảng 6.5-7.5 với mỗi nhóm sản phầm. Trong đó, nhóm sản phẩm được đánh giá cao nhất là *Food and beverages* (khoảng 7.5 điểm) và nhóm sản phầm được đánh giá thấp nhất là *Sports and travel* (khoảng 6.6 điểm) về mặt trung bình.
+
+Vì vậy, siêu thị có thể cân nhắc tăng số lượng sản phẩm thuộc nhóm *Food and beverages* và giữ chiến lược đối với sản phẩm này, cùng với đó là đề ra một số chiến lược khác để tăng mức độ hài lòng của khách hàng tại các sản phẩm thuộc nhóm khác.
+
+### 4.2.3. Hai biến định lượng và một biến nhân tố
+
+**(Product_line, Total và Unit_price)**
+
+```{r, message= FALSE, warning = FALSE}
+data %>% ggplot(aes(Unit_price, Total, colour = Product_line)) +
+  geom_point(alpha = 0.3) +
+  stat_smooth(method = "lm",
+              formula = y ~ x ,
+              se = FALSE) + 
+  labs(title = "Relationship between Total and Price") +
+  theme_bw() + 
+  scale_color_manual(values = c("8B4513", "#D2691E", "#F4A460", "#CD853F", "#FFE4B5", "#D2B48C"))
+```
+
+<div align="justify">
+
+Mối liên hệ giữa biến *Total* và biến *unitprice* được thể hiện ở hình vẽ trên. Bằng cách sử dụng hàm tuyến tính và làm trơn, ta có các đường trung bình *total* ở mỗi nhóm mặt hàng.
+
+Quan sát thấy: Các đường trung bình có xu thế tăng, cụ thể Với khoảng giá từ trên 30, khi *price* tăng thì *total* ở nhóm mặt hàng **Electrocnic accessories** cao nhất và thấp nhất là **Fashion accsessorie**.
+
+Sự phân tích này sẽ giúp cho các doanh nghiệp tập trung phân bổ kinh doanh sản xuất những mặt hàng nào có lợi cho doanh nghiệp của mình để từ đó gia tăng lợi nhuận, cũng như tối thiểu hóa chi tiêu.
+
+------------------------------------------------------------------------
+
+# 5. Tổng kết
+
+<div align="justify">
+
+Bài phân tích trên được thực hiện bằng cách sử dụng bộ dữ liệu từ 1000 quan sát về các loại khách hàng, sản phẩm chính,... tại các chi nhánh khác nhau của cùng một công ty siêu thị và khám phá mối quan hệ giữa các biến. Đầu tiên, chúng ta đi tìm hiểu ý nghĩa của từng biến và tiến hành phân tích một số biến đơn. Sau đó,chúng ta sẽ đi tìm hiểu xem liệu giữa các biến trong bộ số liệu có mối quan hệ với nhau hay không? Và mối quan hệ đó được thể hiện như thế nào?
+
+Bài phân tích trên, nhóm đã chọn ra 5 biến đặc trưng thuộc loại đơn biến cùng với đó là tìm hiểu các mối liên hệ của 5 biến đó với các biến khác trong bộ dữ liệu bằng cách sử dụng gói *ggplot2* và các bước thống kê mô tả trên Rtudio. Qua đó, chúng ta có thể khám phá ra liệu số lượng sản phẩm được bán tại siêu thị có sự khác biệt dựa trên giới tính của khách hàng không? Tổng sản phẩm của siêu thị được bán nhiều nhất vào ngày nào,... Và để từ đó, chúng ta có cái nhìn tổng quan hơn, hiểu rõ hơn về kinh doanh bán hàng tại siêu thi, đồng thời có những đánh giá, đề xuất giải pháp để làm cho việc kinh doanh ngày càng được hoàn thiện hơn.
+
+------------------------------------------------------------------------
+
+# Tài liệu tham khảo
+
+<div align="left">
+
+**1.** Aparicio, M., & Costa, C. J. (2015). Data Visualization. *Communication design quarterly review, 3*(1), 7-11.
+
+**2.** Chen, C.-h., Härdle, W. K., & Uwin, A. (2007). *Handbook of Data Visualization* (Editors ed.). Springer Science & Business Media.
+
+**3.** Prabhakaran, S. (2017). *How to make any plot in ggplot2?* Được truy lục từ r-statistics.co: <http://r-statistics.co/ggplot2-Tutorial-With-R.html>
+
+**4.** Pyae, A. (2019). *Supermarket sales.* Được truy lục từ kaggle: <https://www.kaggle.com/datasets/aungpyaeap/supermarket-sales?resource=download>
+
+**5.** R Graph Gallery. (2018). *ggplot2*. Được truy lục từ R Graph Gallery: <https://r-graph-gallery.com/ggplot2-package.html>
+
+**6.** RStudio. (2018, 12). *Data Visualization with ggplot2 : : CHEAT SHEET.* Được truy lục từ The University of Sydney: School of Mathematics and Statistics: <https://www.maths.usyd.edu.au/u/UG/SM/STAT3022/r/current/Misc/data-visualization-2.1.pdf>
+
+**7.** Tableau Software. (2021, 11). *What is Data Visualization? Definition, examples, and learning resources*. Retrieved from Tableau: <https://www.tableau.com/learn/articles/data-visualization>
